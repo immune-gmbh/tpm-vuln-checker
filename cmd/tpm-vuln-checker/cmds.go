@@ -15,15 +15,17 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"net/url"
 
+	"github.com/fatih/color"
+	"github.com/immune-gmbh/tpm-vuln-checker/pkg/cloud"
 	"github.com/immune-gmbh/tpm-vuln-checker/pkg/cve"
 	"github.com/immune-gmbh/tpm-vuln-checker/pkg/tss"
+	"github.com/manifoldco/promptui"
 )
 
-const (
-	swtpmURL = "tcp://127.0.0.1:2321"
+var (
+	NonVulnerableStyle = color.New(color.FgGreen, color.BgBlack, color.Bold).SprintFunc()
+	VulnerableStyle    = color.New(color.FgRed, color.BgBlack, color.Bold).SprintFunc()
 )
 
 type context struct {
@@ -34,6 +36,7 @@ type versionCmd struct {
 }
 
 type checkCmd struct {
+	NonInteractive bool `flag optional name:"batch" help:"Always uploads anonymized data without asking"`
 }
 
 func (v *versionCmd) Run(ctx *context) error {
@@ -42,38 +45,48 @@ func (v *versionCmd) Run(ctx *context) error {
 }
 
 func (v *checkCmd) Run(ctx *context) error {
-	var err error
-	var rwc io.ReadWriteCloser
-	if ctx.Emulator {
-		var url *url.URL
-		url, err = url.Parse(swtpmURL)
-		if err != nil {
-			return err
-		}
-		rwc, err = tss.OpenNetTPM(url)
-		if err != nil {
-			return err
-		}
-	} else {
-		rwc, err = tss.OpenTPM()
-		if err != nil {
-			return err
-		}
-	}
-	defer rwc.Close()
-	found, err := cve.Detect(rwc)
+	socket, err := tss.NewTPM(ctx.Emulator)
 	if err != nil {
 		return err
 	}
-	tpmInfo, err := tss.ReadTPM2VendorAttributes(rwc)
+	defer socket.Close()
+	if !tss.IsTPM2(socket) {
+		return fmt.Errorf("no TPM 2.0 found")
+	}
+	tpmInfo, err := tss.ReadTPM2VendorAttributes(socket)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s\n%s\n%s\n", tpmInfo.Manufacturer.String(), tpmInfo.SpecRevision, tpmInfo.Family)
-	if found {
-		fmt.Println("found")
+	fmt.Printf("TPM Manufacturer: \t%s\nTPM Spec Revision: \t%s\nTPM Family: \t\t%s\nTPM Firmware: \t\t0x%s,0x%s\n",
+		tpmInfo.Manufacturer.String(), tpmInfo.SpecRevision.String(), tpmInfo.Family.String(),
+		tpmInfo.FWVersion1.String(), tpmInfo.FWVersion2.String())
+	vulnerable, cveData, err := cve.Detect(socket)
+	if err != nil {
+		return err
+	}
+	if vulnerable {
+		fmt.Printf("CVE 2023-1017-1018: \t%s", VulnerableStyle("Vulnerable"))
 	} else {
-		fmt.Println("Not found")
+		fmt.Printf("CVE 2023-1017-1018: \t%s", NonVulnerableStyle("Not Vulnerable"))
+	}
+	fmt.Println()
+	if v.NonInteractive {
+		if err := cloud.UploadAnonData(tpmInfo, cveData, vulnerable); err != nil {
+			return err
+		}
+	} else {
+		prompt := promptui.Prompt{
+			Label:     "Do you want to upload this data anonymized for analysis and tpm firmware update support",
+			IsConfirm: true,
+		}
+		fmt.Println()
+		_, err := prompt.Run()
+		if err != nil {
+			return nil
+		}
+		if err := cloud.UploadAnonData(tpmInfo, cveData, vulnerable); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -81,5 +94,5 @@ func (v *checkCmd) Run(ctx *context) error {
 var cli struct {
 	Emulator bool       `help:"Enable emulator mode."`
 	Version  versionCmd `cmd help:"Prints the version of the program"`
-	Check    checkCmd   `short:"c" cmd help:"Check TPM for CVE2023-1017-1018"`
+	Check    checkCmd   `short:"c" cmd help:"Check TPM for CVE 2023-1017-1018"`
 }

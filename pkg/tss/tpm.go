@@ -19,15 +19,14 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"strconv"
 
 	"github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpmutil"
 )
 
 const (
-	mssimCommandPort  = "2321"
-	mssimPlatformPort = "2322"
-	mssimURLScheme    = "mssim"
+	swtpmURL = "tcp://127.0.0.1:2321"
 )
 
 // TCGVendorID represents a unique TCG manufacturer code.
@@ -59,10 +58,47 @@ var vendors = map[TCGVendorID]string{
 	1196379975: "Google",
 }
 
+type TCGFamily uint32
+
+var families = map[TCGFamily]string{
+	841887744: "2.0",
+}
+
+type TCGSpecRevision uint32
+type TCGFirmwareVersion1 uint32
+type TCGFirmwareVersion2 uint32
+
 type TPM20Info struct {
 	Manufacturer TCGVendorID
-	Family       string
-	SpecRevision string
+	Family       TCGFamily
+	SpecRevision TCGSpecRevision
+	FWVersion1   TCGFirmwareVersion1
+	FWVersion2   TCGFirmwareVersion2
+}
+
+func (version TCGFirmwareVersion1) String() string {
+	if version == 0 {
+		return "0"
+	} else {
+		return strconv.FormatUint(uint64(version), 16)
+	}
+}
+
+func (version TCGFirmwareVersion2) String() string {
+	if version == 0 {
+		return "0"
+	} else {
+		return strconv.FormatUint(uint64(version), 16)
+	}
+}
+
+func (family TCGFamily) String() string {
+	return families[family]
+}
+
+func (spec TCGSpecRevision) String() string {
+	tmp := fmt.Sprintf("%d", spec)
+	return fmt.Sprintf("%c.%s", tmp[0], tmp[1:])
 }
 
 var ECCPublicKey = tpm2.Public{
@@ -194,6 +230,11 @@ func Property(conn io.ReadWriteCloser, prop uint32) (uint32, error) {
 	}
 }
 
+func IsTPM2(tpm io.ReadWriteCloser) bool {
+	_, err := Property(tpm, uint32(tpm2.FamilyIndicator))
+	return err == nil
+}
+
 func ReadTPM2VendorAttributes(tpm io.ReadWriteCloser) (*TPM20Info, error) {
 	manu, err := Property(tpm, uint32(tpm2.Manufacturer))
 	if err != nil {
@@ -207,10 +248,20 @@ func ReadTPM2VendorAttributes(tpm io.ReadWriteCloser) (*TPM20Info, error) {
 	if err != nil {
 		return nil, err
 	}
+	version1, err := Property(tpm, uint32(tpm2.FirmwareVersion1))
+	if err != nil {
+		return nil, err
+	}
+	version2, err := Property(tpm, uint32(tpm2.FirmwareVersion2))
+	if err != nil {
+		return nil, err
+	}
 	return &TPM20Info{
 		Manufacturer: TCGVendorID(manu),
-		Family:       fmt.Sprintf("%d", family),
-		SpecRevision: fmt.Sprintf("%d", spec),
+		Family:       TCGFamily(family),
+		SpecRevision: TCGSpecRevision(spec),
+		FWVersion1:   TCGFirmwareVersion1(version1),
+		FWVersion2:   TCGFirmwareVersion2(version2),
 	}, nil
 }
 
@@ -226,4 +277,26 @@ func StartAuthSession(rw io.ReadWriter, tpmKey, bindKey tpmutil.Handle, nonceCal
 		return 0, nil, err
 	}
 	return decodeStartAuthSession(resp)
+}
+
+func NewTPM(emulator bool) (io.ReadWriteCloser, error) {
+	var err error
+	var rwc io.ReadWriteCloser
+	if emulator {
+		var url *url.URL
+		url, err = url.Parse(swtpmURL)
+		if err != nil {
+			return nil, err
+		}
+		rwc, err = OpenNetTPM(url)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		rwc, err = OpenTPM()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return rwc, nil
 }

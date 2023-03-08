@@ -50,5 +50,7 @@ func main() {
 			Summary: true,
 		}))
 	err := ctx.Run(&context{Emulator: cli.Emulator})
+	fmt.Println()
+	fmt.Println()
 	ctx.FatalIfErrorf(err)
 }

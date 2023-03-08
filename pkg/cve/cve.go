@@ -24,23 +24,29 @@ import (
 	"github.com/immune-gmbh/tpm-vuln-checker/pkg/tss"
 )
 
+type CVEData struct {
+	RawString string
+	Err       tpm2.ParameterError
+}
+
 func hex2int(hexStr string) uint64 {
 	cleaned := strings.Replace(hexStr, "0x", "", -1)
 	result, _ := strconv.ParseUint(cleaned, 16, 64)
 	return uint64(result)
 }
 
-func parserParameterError(err error) (*tpm2.ParameterError, error) {
-	var paramErr tpm2.ParameterError
+func parserParameterError(err error) (*CVEData, error) {
+	var cveData CVEData
 	strErr := err.Error()
 	if err == nil {
 		return nil, fmt.Errorf("error is nil")
 	}
+	cveData.RawString = strErr
 	f := func(c rune) bool {
 		return c == ',' || c == ':' || c == ' '
 	}
 	info := strings.FieldsFunc(strErr, f)
-	if info[0] == "parameter" || info[0] == "session" {
+	if info[0] == "parameter" || info[0] == "session" || info[0] == "handle" {
 		param, err := strconv.Atoi(info[1])
 		if err != nil {
 			return nil, fmt.Errorf("couldn't parse parameter error parameter")
@@ -49,14 +55,14 @@ func parserParameterError(err error) (*tpm2.ParameterError, error) {
 			return nil, fmt.Errorf("couldn't parse parameter error code")
 		}
 		code := hex2int(info[4])
-		paramErr.Parameter = tpm2.RCIndex(param)
-		paramErr.Code = tpm2.RCFmt1(code)
-		return &paramErr, nil
+		cveData.Err.Parameter = tpm2.RCIndex(param)
+		cveData.Err.Code = tpm2.RCFmt1(code)
+		return &cveData, nil
 	}
 	return nil, fmt.Errorf("couldn't parse error strings: %s", strErr)
 }
 
-func Detect(rwc io.ReadWriteCloser) (bool, error) {
+func Detect(rwc io.ReadWriteCloser) (bool, *CVEData, error) {
 	_ = tpm2.Startup(rwc, tpm2.StartupClear)
 	session, _, err := tss.StartAuthSession(
 		rwc,
@@ -68,33 +74,33 @@ func Detect(rwc io.ReadWriteCloser) (bool, error) {
 		tpm2.AlgXOR,
 		tpm2.AlgSHA256)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 	defer tpm2.FlushContext(rwc, session)
 
 	hnd, _, err := tpm2.CreatePrimary(rwc, tpm2.HandleEndorsement, tpm2.PCRSelection{}, "", "", tss.ECCPublicKey)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 	defer tpm2.FlushContext(rwc, hnd)
 	// We don't test oobwrite because it's dangerous
 	err = oobRead(rwc, tpm2.HandleEndorsement, session, nil)
 	if err == nil {
-		return false, fmt.Errorf("no tpm error returned")
+		return false, nil, fmt.Errorf("no tpm error returned")
 	}
-	paramErr, err := parserParameterError(err)
+	cveData, err := parserParameterError(err)
 	if err != nil {
-		return false, fmt.Errorf("couldn't parse parameter error %v", err)
+		return false, nil, fmt.Errorf("couldn't parse parameter error %v", err)
 	}
-	if paramErr != nil && paramErr.Parameter == 1 {
-		switch paramErr.Code {
+	if cveData != nil && cveData.Err.Parameter == 1 {
+		switch cveData.Err.Code {
 		case 0x1a:
-			return false, nil
+			return false, cveData, nil
 		case 0x15:
-			return true, nil
+			return true, cveData, nil
 		}
 	}
-	return false, fmt.Errorf("unknown TPM session error")
+	return false, cveData, nil
 }
 
 func oobRead(rwc io.ReadWriteCloser, owner, sess tpmutil.Handle, payload []byte) error {

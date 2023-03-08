@@ -13,8 +13,13 @@
 // limitations under the License.
 package tss
 
+import (
+	"io"
+
+	"github.com/google/go-tpm/tpmutil"
+)
+
 func OpenTPM() (io.ReadWriteCloser, error) {
-	_ = tpmPath
 	conn, err := tpmutil.OpenTPM()
 	if err != nil {
 		return nil, err
