@@ -24,8 +24,9 @@ import (
 )
 
 var (
-	NonVulnerableStyle = color.New(color.FgGreen, color.BgBlack, color.Bold).SprintFunc()
-	VulnerableStyle    = color.New(color.FgRed, color.BgBlack, color.Bold).SprintFunc()
+	NonVulnerableStyle   = color.New(color.FgGreen, color.BgBlack, color.Bold).SprintFunc()
+	VulnerableStyle      = color.New(color.FgRed, color.BgBlack, color.Bold).SprintFunc()
+	MaybeVulnerableStyle = color.New(color.FgYellow, color.BgBlack, color.Bold).SprintFunc()
 )
 
 type context struct {
@@ -57,17 +58,21 @@ func (v *checkCmd) Run(ctx *context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("TPM Manufacturer: \t%s\nTPM Spec Revision: \t%s\nTPM Family: \t\t%s\nTPM Firmware: \t\t0x%s,0x%s\n",
-		tpmInfo.Manufacturer.String(), tpmInfo.SpecRevision.String(), tpmInfo.Family.String(),
-		tpmInfo.FWVersion1.String(), tpmInfo.FWVersion2.String())
+	fmt.Printf("TPM Manufacturer: \t%s\nTPM Spec Revision: \t%s\nTPM Family: \t\t%s\n",
+		tpmInfo.Manufacturer.String(), tpmInfo.SpecRevision.String(), tpmInfo.Family.String())
 	vulnerable, cveData, err := cve.Detect(socket)
 	if err != nil {
-		return err
-	}
-	if vulnerable {
-		fmt.Printf("CVE 2023-1017-1018: \t%s", VulnerableStyle("Vulnerable"))
+		if err.Error() == "unknown" {
+			fmt.Printf("CVE 2023-1017/2023-1018: \t%s", MaybeVulnerableStyle("Probably Not Vulnerable"))
+		} else {
+			return err
+		}
 	} else {
-		fmt.Printf("CVE 2023-1017-1018: \t%s", NonVulnerableStyle("Not Vulnerable"))
+		if vulnerable {
+			fmt.Printf("CVE 2023-1017/2023-1018: \t%s", VulnerableStyle("Vulnerable"))
+		} else {
+			fmt.Printf("CVE 2023-1017/2023-1018: \t%s", NonVulnerableStyle("Not Vulnerable"))
+		}
 	}
 	fmt.Println()
 	if v.NonInteractive {

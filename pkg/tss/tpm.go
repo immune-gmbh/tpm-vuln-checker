@@ -65,26 +65,22 @@ var families = map[TCGFamily]string{
 }
 
 type TCGSpecRevision uint32
-type TCGFirmwareVersion1 uint32
-type TCGFirmwareVersion2 uint32
+type TCGFirmwareVersion uint32
+type TCGVendorString uint32
 
 type TPM20Info struct {
 	Manufacturer TCGVendorID
 	Family       TCGFamily
 	SpecRevision TCGSpecRevision
-	FWVersion1   TCGFirmwareVersion1
-	FWVersion2   TCGFirmwareVersion2
+	FWVersion1   TCGFirmwareVersion
+	FWVersion2   TCGFirmwareVersion
+	VendorData1  TCGVendorString
+	VendorData2  TCGVendorString
+	VendorData3  TCGVendorString
+	VendorData4  TCGVendorString
 }
 
-func (version TCGFirmwareVersion1) String() string {
-	if version == 0 {
-		return "0"
-	} else {
-		return strconv.FormatUint(uint64(version), 16)
-	}
-}
-
-func (version TCGFirmwareVersion2) String() string {
+func (version TCGFirmwareVersion) String() string {
 	if version == 0 {
 		return "0"
 	} else {
@@ -256,12 +252,32 @@ func ReadTPM2VendorAttributes(tpm io.ReadWriteCloser) (*TPM20Info, error) {
 	if err != nil {
 		return nil, err
 	}
+	vendor1, err := Property(tpm, uint32(tpm2.VendorString1))
+	if err != nil {
+		return nil, err
+	}
+	vendor2, err := Property(tpm, uint32(tpm2.VendorString2))
+	if err != nil {
+		return nil, err
+	}
+	vendor3, err := Property(tpm, uint32(tpm2.VendorString3))
+	if err != nil {
+		return nil, err
+	}
+	vendor4, err := Property(tpm, uint32(tpm2.VendorString4))
+	if err != nil {
+		return nil, err
+	}
 	return &TPM20Info{
 		Manufacturer: TCGVendorID(manu),
 		Family:       TCGFamily(family),
 		SpecRevision: TCGSpecRevision(spec),
-		FWVersion1:   TCGFirmwareVersion1(version1),
-		FWVersion2:   TCGFirmwareVersion2(version2),
+		FWVersion1:   TCGFirmwareVersion(version1),
+		FWVersion2:   TCGFirmwareVersion(version2),
+		VendorData1:  TCGVendorString(vendor1),
+		VendorData2:  TCGVendorString(vendor2),
+		VendorData3:  TCGVendorString(vendor3),
+		VendorData4:  TCGVendorString(vendor4),
 	}, nil
 }
 

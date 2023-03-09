@@ -14,6 +14,7 @@
 package cve
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -26,7 +27,8 @@ import (
 
 type CVEData struct {
 	RawString string
-	Err       tpm2.ParameterError
+	Valid     int
+	Code      uint64
 }
 
 func hex2int(hexStr string) uint64 {
@@ -35,7 +37,7 @@ func hex2int(hexStr string) uint64 {
 	return uint64(result)
 }
 
-func parserParameterError(err error) (*CVEData, error) {
+func parserError(err error) (*CVEData, error) {
 	var cveData CVEData
 	strErr := err.Error()
 	if err == nil {
@@ -55,8 +57,8 @@ func parserParameterError(err error) (*CVEData, error) {
 			return nil, fmt.Errorf("couldn't parse parameter error code")
 		}
 		code := hex2int(info[4])
-		cveData.Err.Parameter = tpm2.RCIndex(param)
-		cveData.Err.Code = tpm2.RCFmt1(code)
+		cveData.Valid = param
+		cveData.Code = code
 		return &cveData, nil
 	}
 	return nil, fmt.Errorf("couldn't parse error strings: %s", strErr)
@@ -88,19 +90,21 @@ func Detect(rwc io.ReadWriteCloser) (bool, *CVEData, error) {
 	if err == nil {
 		return false, nil, fmt.Errorf("no tpm error returned")
 	}
-	cveData, err := parserParameterError(err)
+	cveData, err := parserError(err)
 	if err != nil {
 		return false, nil, fmt.Errorf("couldn't parse parameter error %v", err)
 	}
-	if cveData != nil && cveData.Err.Parameter == 1 {
-		switch cveData.Err.Code {
+	if cveData != nil && cveData.Valid == 1 {
+		switch cveData.Code {
 		case 0x1a:
 			return false, cveData, nil
 		case 0x15:
 			return true, cveData, nil
 		}
+	} else if cveData != nil && cveData.Valid != 1 {
+		return false, cveData, errors.New("unknown")
 	}
-	return false, cveData, nil
+	return false, cveData, fmt.Errorf("no cve data")
 }
 
 func oobRead(rwc io.ReadWriteCloser, owner, sess tpmutil.Handle, payload []byte) error {
