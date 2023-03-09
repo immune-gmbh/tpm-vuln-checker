@@ -1,0 +1,6 @@
+domain: vuln.immune.gmbh
+url: https://vuln.immune.gmbh
+markdown: kramdown
+remote_theme: immune-gmbh/midnight@master
+plugins:
+- jekyll-remote-theme
