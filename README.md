@@ -9,8 +9,6 @@ To use this tool, you will need the following:
 * Windows Vista+ or Linux operating system
 
 ## Installation
-* Install Golang on your system by following the instructions for your operating system on the official Golang website.
-
 * Download the latest release of the tpm-vuln-checker library from the following link: [Releases](https://github.com/immune-gmbh/tpm-vuln-checker/releases/latest
 )
 
