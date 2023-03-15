@@ -9,10 +9,10 @@ To use this tool, you will need the following:
 * Windows Vista+ or Linux operating system
 
 ## Installation
-* Download the latest release of the tpm-vuln-checker library from the following link: [Releases](https://github.com/immune-gmbh/tpm-vuln-checker/releases/latest
+Download the latest release of the tpm-vuln-checker library from the following link: [Releases](https://github.com/immune-gmbh/tpm-vuln-checker/releases/latest
 )
 
-## Run the checker
+### Run the checker
 
 ```
 tpm-vuln-checker check
