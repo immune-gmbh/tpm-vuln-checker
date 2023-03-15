@@ -49,7 +49,7 @@ func main() {
 			Compact: true,
 			Summary: true,
 		}))
-	err := ctx.Run(&context{Emulator: cli.Emulator})
+	err := ctx.Run(&context{Emulator: cli.Emulator, URL: cli.URL})
 	fmt.Println()
 	ctx.FatalIfErrorf(err)
 }
