@@ -1,4 +1,4 @@
-# TPM Vulnerability Scanning Tool
+# TPM 2.0 Vulnerability Scanning Tool
 This is a tool written in Golang designed to scan for multiple TPM vulnerabilities using the Immune Security tpm-vuln-checker library.
 
 ## Requirements
