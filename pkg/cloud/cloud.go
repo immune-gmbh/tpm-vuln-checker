@@ -22,7 +22,8 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/immune-gmbh/tpm-vuln-checker/pkg/cve"
+	"github.com/immune-gmbh/tpm-vuln-checker/pkg/cve201715361"
+	"github.com/immune-gmbh/tpm-vuln-checker/pkg/cve20231017"
 	"github.com/immune-gmbh/tpm-vuln-checker/pkg/tss"
 )
 
@@ -31,19 +32,19 @@ const (
 )
 
 type AnonInfo struct {
-	Info       *tss.TPM20Info `json:"info"`
-	Vulnerable bool           `json:"vulnerable"`
-	Raw        *cve.CVEData   `json:"cvedata"`
+	Info             *tss.TPM20Info        `json:"info"`
+	CVEData20231017  *cve20231017.CVEData  `json:"cveData-20231017"`
+	CVEData201715361 *cve201715361.CVEData `json:"cveData-201715361"`
 }
 
-func UploadAnonData(info *tss.TPM20Info, raw *cve.CVEData, vuln bool) error {
+func UploadAnonData(info *tss.TPM20Info, cveData20231017 *cve20231017.CVEData, cveData201715361 *cve201715361.CVEData) error {
 	if info == nil {
 		return fmt.Errorf("tpm info is nil")
 	}
 	var payload AnonInfo
 	payload.Info = info
-	payload.Vulnerable = vuln
-	payload.Raw = raw
+	payload.CVEData20231017 = cveData20231017
+	payload.CVEData201715361 = cveData201715361
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return err

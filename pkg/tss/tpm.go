@@ -113,6 +113,22 @@ var ECCPublicKey = tpm2.Public{
 	},
 }
 
+var RSAPublicKey = tpm2.Public{
+	Type:    tpm2.AlgRSA,
+	NameAlg: tpm2.AlgSHA256,
+	Attributes: tpm2.FlagFixedTPM | tpm2.FlagFixedParent | tpm2.FlagSensitiveDataOrigin |
+		tpm2.FlagUserWithAuth | tpm2.FlagRestricted | tpm2.FlagDecrypt,
+	AuthPolicy: []byte{},
+	RSAParameters: &tpm2.RSAParams{
+		Symmetric: &tpm2.SymScheme{
+			Alg:     tpm2.AlgAES,
+			KeyBits: 128,
+			Mode:    tpm2.AlgCFB,
+		},
+		KeyBits: 2048,
+	},
+}
+
 func RunCommand(rw io.ReadWriter, tag tpmutil.Tag, Cmd tpmutil.Command, in ...interface{}) ([]byte, error) {
 	resp, code, err := tpmutil.RunCommand(rw, tag, Cmd, in...)
 	if err != nil {
