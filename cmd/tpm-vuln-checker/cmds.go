@@ -21,7 +21,6 @@ import (
 	"github.com/immune-gmbh/tpm-vuln-checker/pkg/cve201715361"
 	"github.com/immune-gmbh/tpm-vuln-checker/pkg/cve20231017"
 	"github.com/immune-gmbh/tpm-vuln-checker/pkg/tss"
-	"github.com/manifoldco/promptui"
 )
 
 var (
@@ -33,13 +32,15 @@ var (
 
 type context struct {
 	Emulator bool
+	URL      string
 }
 
 type versionCmd struct {
 }
 
 type checkCmd struct {
-	NonInteractive bool `flag optional name:"auto-upload" help:"Always uploads anonymized data without asking"`
+	Upload  bool `flag optional name:"upload" help:"Always uploads anonymized data without asking"`
+	Verbose bool `flag optional name:"verbose" help:"Verbose TPM device info"`
 }
 
 func (v *versionCmd) Run(ctx *context) error {
@@ -47,7 +48,7 @@ func (v *versionCmd) Run(ctx *context) error {
 	return nil
 }
 
-func (v *checkCmd) Run(ctx *context) error {
+func (c *checkCmd) Run(ctx *context) error {
 	socket, err := tss.NewTPM(ctx.Emulator)
 	if err != nil {
 		return err
@@ -62,6 +63,9 @@ func (v *checkCmd) Run(ctx *context) error {
 	}
 	fmt.Printf("TPM Manufacturer: \t\t%s\nTPM Spec Revision: \t\t%s\nTPM Family: \t\t\t%s\n",
 		tpmInfo.Manufacturer.String(), tpmInfo.SpecRevision.String(), tpmInfo.Family.String())
+	if c.Verbose {
+		// TODO
+	}
 	fmt.Printf("\nStarting TPM vulnerabilities checks.. This may take few seconds!\n\n")
 	vulnerable, cveData20231017, err := cve20231017.IsVulnerable(socket)
 	if err != nil {
@@ -90,22 +94,12 @@ func (v *checkCmd) Run(ctx *context) error {
 		}
 	}
 	fmt.Println()
-	if v.NonInteractive {
-		if err := cloud.UploadAnonData(tpmInfo, cveData20231017, cveData201715361); err != nil {
+	fmt.Println()
+	if c.Upload {
+		if err := cloud.UploadAnonData(ctx.URL, tpmInfo, cveData20231017, cveData201715361); err != nil {
 			return err
-		}
-	} else {
-		prompt := promptui.Prompt{
-			Label:     "Do you want to upload this data anonymized for analysis and tpm firmware update support",
-			IsConfirm: true,
-		}
-		fmt.Println()
-		_, err := prompt.Run()
-		if err != nil {
-			return nil
-		}
-		if err := cloud.UploadAnonData(tpmInfo, cveData20231017, cveData201715361); err != nil {
-			return err
+		} else {
+			fmt.Printf("Upload Complete! Thank you for the TPM metrics :)")
 		}
 	}
 	return nil
@@ -113,6 +107,7 @@ func (v *checkCmd) Run(ctx *context) error {
 
 var cli struct {
 	Emulator bool       `help:"Enable emulator mode."`
+	URL      string     `help:"Custom upload url."`
 	Version  versionCmd `cmd help:"Prints the version of the program"`
-	Check    checkCmd   `short:"c" cmd help:"Check TPM for CVE 2023-1017-1018"`
+	Check    checkCmd   `short:"c" cmd help:"Checks for TPM vulnerabilities"`
 }

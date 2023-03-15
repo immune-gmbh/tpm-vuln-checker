@@ -27,7 +27,7 @@ import (
 	"github.com/immune-gmbh/tpm-vuln-checker/pkg/tss"
 )
 
-const (
+var (
 	uploadURL = "https://upload.vuln.immune.gmbh"
 )
 
@@ -37,7 +37,7 @@ type AnonInfo struct {
 	CVEData201715361 *cve201715361.CVEData `json:"cveData-201715361"`
 }
 
-func UploadAnonData(info *tss.TPM20Info, cveData20231017 *cve20231017.CVEData, cveData201715361 *cve201715361.CVEData) error {
+func UploadAnonData(customURL string, info *tss.TPM20Info, cveData20231017 *cve20231017.CVEData, cveData201715361 *cve201715361.CVEData) error {
 	if info == nil {
 		return fmt.Errorf("tpm info is nil")
 	}
@@ -55,6 +55,9 @@ func UploadAnonData(info *tss.TPM20Info, cveData20231017 *cve20231017.CVEData, c
 	part, _ := writer.CreateFormFile("file", id+".json")
 	io.Copy(part, bytes.NewReader(data))
 	writer.Close()
+	if customURL != "" {
+		uploadURL = customURL
+	}
 	request, err := http.NewRequest("POST", uploadURL, body)
 	if err != nil {
 		return err
