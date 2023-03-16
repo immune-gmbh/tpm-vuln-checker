@@ -19,7 +19,7 @@ tpm-vuln-checker check
 
 ### Upload anonymized TPM data to a custom URL
 We aggregate data from the TPM to evaluate TPM 2.0 metrics when you use the tool --upload
-If you want to use the data on your own you can define a custom upload url. The tool will do a HTTP POST with muti part for data (JSON).
+If you want to use the data on your own you can define a custom upload url. The tool will do a HTTP POST with multipart form data containing a json.
 The filename send in the POST is a random UUID with a .json ending.
 
 ```
