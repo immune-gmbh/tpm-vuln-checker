@@ -17,6 +17,15 @@ Download the latest release of the tpm-vuln-checker library from the following l
 tpm-vuln-checker check
 ```
 
+### Upload anonymized TPM data to a custom URL
+We aggregate data from the TPM to evaluate TPM 2.0 metrics when you use the tool --upload
+If you want to use the data on your own you can define a custom upload url. The tool will do a HTTP POST with muti part for data (JSON).
+The filename send in the POST is a random UUID with a .json ending.
+
+```
+tpm-vuln-checker --url=https://your.domain check --upload
+```
+
 ## Vulnerabilities Detected
 This tool is designed to detect the following vulnerabilities using the tpm-vuln-checker library:
 
