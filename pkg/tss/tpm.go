@@ -357,3 +357,22 @@ func NewTPM(emulator bool) (io.ReadWriteCloser, error) {
 	}
 	return rwc, nil
 }
+
+func FlushAllHandles(tpm io.ReadWriteCloser) error {
+	vals, _, err := tpm2.GetCapability(tpm, tpm2.CapabilityHandles, 100, uint32(tpm2.HandleTypeHMACSession)<<24)
+	if err != nil {
+		return err
+	}
+
+	if len(vals) > 0 {
+		for _, handle := range vals {
+			switch t := handle.(type) {
+			default:
+
+			case tpmutil.Handle:
+				tpm2.FlushContext(tpm, t)
+			}
+		}
+	}
+	return nil
+}

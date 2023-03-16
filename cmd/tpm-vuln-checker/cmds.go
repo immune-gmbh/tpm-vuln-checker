@@ -57,6 +57,7 @@ func (c *checkCmd) Run(ctx *context) error {
 	if !tss.IsTPM2(socket) {
 		return fmt.Errorf("no TPM 2.0 found")
 	}
+	tss.FlushAllHandles(socket)
 	tpmInfo, err := tss.ReadTPM2VendorAttributes(socket)
 	if err != nil {
 		return err
