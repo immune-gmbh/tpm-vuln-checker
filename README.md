@@ -5,7 +5,6 @@ This is a tool written in Golang designed to scan for multiple TPM vulnerabiliti
 To use this tool, you will need the following:
 
 * TPM device driver
-* Golang 1.20 or higher
 * Windows Vista+ or Linux operating system
 
 ## Installation
