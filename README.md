@@ -36,6 +36,6 @@ Resources: https://www.ncsc.gov.uk/guidance/roca-infineon-tpm-and-secure-element
 https://blog.quarkslab.com/vulnerabilities-in-the-tpm-20-reference-implementation-code.html
 
 ## Disclaimer
-This tool is provided for educational and research purposes only. Use of this tool for any illegal or unauthorized purpose is strictly prohibited. The author of this tool is not responsible for any damages or liabilities that may arise from the use of this tool.
+The author of this tool is not responsible for any damages or liabilities that may arise from the use of this tool.
 
 This tool may upload anonymized data to a server for metrics analysis purposes. This data is used to improve the tool and identify potential vulnerabilities in TPMs. No personally identifiable information is collected or stored. By using this tool, you consent to the collection and use of anonymized data for metrics analysis purposes. If you do not consent to this, do not use this tool.
