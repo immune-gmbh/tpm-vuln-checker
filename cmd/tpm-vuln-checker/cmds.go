@@ -61,10 +61,10 @@ func (c *checkCmd) Run(ctx *context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("TPM Manufacturer: \t\t%s\nTPM Spec Revision: \t\t%s\nTPM Family: \t\t\t%s\n",
-		tpmInfo.Manufacturer.String(), tpmInfo.SpecRevision.String(), tpmInfo.Family.String())
+	fmt.Printf("TPM Manufacturer: \t\t%s\nTPM Spec Revision: \t\t%s\nTPM Family: \t\t\t%s\nTPM Type: \t\t\t%s\n",
+		tpmInfo.Vendor(), tpmInfo.Specification(), tpmInfo.Version(), tpmInfo.Type())
 	if c.Verbose {
-		// TODO
+		fmt.Printf("TPM Firmware: \t\t\t%s\nTPM Spec Year: \t\t\t%s\n", tpmInfo.FirmwareVersion(), tpmInfo.SpecYear())
 	}
 	fmt.Printf("\nStarting TPM vulnerabilities checks.. This may take few seconds!\n\n")
 	vulnerable, cveData20231017, err := cve20231017.IsVulnerable(socket)

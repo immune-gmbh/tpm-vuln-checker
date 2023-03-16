@@ -19,7 +19,6 @@ import (
 	"io"
 	"net"
 	"net/url"
-	"strconv"
 
 	"github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpmutil"
@@ -67,6 +66,7 @@ var families = map[TCGFamily]string{
 type TCGSpecRevision uint32
 type TCGFirmwareVersion uint32
 type TCGVendorString uint32
+type TCGYear uint32
 
 type TPM20Info struct {
 	Manufacturer TCGVendorID
@@ -78,23 +78,47 @@ type TPM20Info struct {
 	VendorData2  TCGVendorString
 	VendorData3  TCGVendorString
 	VendorData4  TCGVendorString
+	Year         TCGYear
 }
 
-func (version TCGFirmwareVersion) String() string {
-	if version == 0 {
-		return "0"
-	} else {
-		return strconv.FormatUint(uint64(version), 16)
+func (t *TPM20Info) SpecYear() string {
+	tmp := fmt.Sprintf("%d", t.Year)
+	return fmt.Sprintf("%c%c%c%c", tmp[0], tmp[1], tmp[2], tmp[3])
+}
+
+func (t *TPM20Info) Type() string {
+	switch t.Family {
+	case 1095582720:
+	case 1229870147:
+		return "fTPM"
 	}
+	return "dTPM"
 }
 
-func (family TCGFamily) String() string {
-	return families[family]
+func (t *TPM20Info) Version() string {
+	return families[t.Family]
 }
 
-func (spec TCGSpecRevision) String() string {
-	tmp := fmt.Sprintf("%d", spec)
+func (t *TPM20Info) Specification() string {
+	tmp := fmt.Sprintf("%d", t.SpecRevision)
 	return fmt.Sprintf("%c.%s", tmp[0], tmp[1:])
+}
+
+func (t *TPM20Info) FirmwareVersion() string {
+	var firmwareVersion string
+	version1 := fmt.Sprintf("%d", t.FWVersion1)
+	version2 := fmt.Sprintf("%d", t.FWVersion1)
+	if t.FWVersion1 != 0 {
+		firmwareVersion = fmt.Sprintf("%c.%s", version1[0], version1[1:])
+	}
+	if t.FWVersion2 != 0 {
+		firmwareVersion += fmt.Sprintf(" - %c.%s", version2[0], version2[1:])
+	}
+	return firmwareVersion
+}
+
+func (t *TPM20Info) Vendor() string {
+	return vendors[t.Manufacturer]
 }
 
 var ECCPublicKey = tpm2.Public{
@@ -222,10 +246,6 @@ func OpenNetTPM(url *url.URL) (io.ReadWriteCloser, error) {
 	return rwc, nil
 }
 
-func (id TCGVendorID) String() string {
-	return vendors[id]
-}
-
 func Property(conn io.ReadWriteCloser, prop uint32) (uint32, error) {
 	caps, _, err := tpm2.GetCapability(conn, tpm2.CapabilityTPMProperties, 1, prop)
 	if err != nil {
@@ -284,6 +304,10 @@ func ReadTPM2VendorAttributes(tpm io.ReadWriteCloser) (*TPM20Info, error) {
 	if err != nil {
 		return nil, err
 	}
+	year, err := Property(tpm, uint32(tpm2.SpecYear))
+	if err != nil {
+		return nil, err
+	}
 	return &TPM20Info{
 		Manufacturer: TCGVendorID(manu),
 		Family:       TCGFamily(family),
@@ -294,6 +318,7 @@ func ReadTPM2VendorAttributes(tpm io.ReadWriteCloser) (*TPM20Info, error) {
 		VendorData2:  TCGVendorString(vendor2),
 		VendorData3:  TCGVendorString(vendor3),
 		VendorData4:  TCGVendorString(vendor4),
+		Year:         TCGYear(year),
 	}, nil
 }
 
